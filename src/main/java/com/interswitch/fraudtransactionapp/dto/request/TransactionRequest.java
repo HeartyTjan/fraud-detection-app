@@ -3,12 +3,13 @@ package com.interswitch.fraudtransactionapp.dto.request;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 public class TransactionRequest {
 
@@ -36,7 +37,6 @@ public class TransactionRequest {
 
     @NotBlank(message = "User agent is required for risk analysis")
     private String userAgent;
-
 
     private String sessionId;
 

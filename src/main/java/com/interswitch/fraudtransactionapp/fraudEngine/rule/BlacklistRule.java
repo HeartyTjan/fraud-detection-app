@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Order(1)
-public class BlacklistRule implements FraudRule {
+public class BlacklistRule implements BlockingRule {
 
     private static final int BLACKLIST_SCORE = 100;
 

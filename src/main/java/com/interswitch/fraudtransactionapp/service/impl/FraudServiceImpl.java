@@ -12,6 +12,7 @@ import com.interswitch.fraudtransactionapp.service.FraudService;
 import com.interswitch.fraudtransactionapp.util.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -34,17 +35,20 @@ public class FraudServiceImpl implements FraudService {
 //    private final TransactionRepository transactionRepository;
 
 
-    @Transactional
     @Override
     public FraudDecision process(TransactionRequest request) {
-
         FraudDecision decision = fraudEngine.evaluate(request);
 
+        persistDecision(request, decision);
+
+        return decision;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void persistDecision(TransactionRequest request, FraudDecision decision) {
         handlePostDecision(request, decision);
         Transactions transaction = TransactionMapper.toEntity(request, decision);
         transactionJdbcDao.save(transaction);
-
-        return decision;
     }
 
     private void handlePostDecision(TransactionRequest request, FraudDecision decision) {

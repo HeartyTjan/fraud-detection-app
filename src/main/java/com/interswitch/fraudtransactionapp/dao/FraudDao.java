@@ -11,12 +11,15 @@ import org.springframework.jdbc.core.namedparam.SqlParameterSource;
 import org.springframework.jdbc.core.simple.SimpleJdbcCall;
 import org.springframework.stereotype.Repository;
 
+import lombok.extern.slf4j.Slf4j;
+
 import javax.sql.DataSource;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.Map;
 
+@Slf4j
 @Repository
 public class FraudDao {
 
@@ -32,6 +35,7 @@ public class FraudDao {
     }
 
     public VelocityResult checkAllVelocity(String cardNo, String ipAddress, Instant now) {
+        long start = System.currentTimeMillis();
         SqlParameterSource in = new MapSqlParameterSource()
                 .addValue("p_card_no", cardNo)
                 .addValue("p_ip_address", ipAddress)
@@ -45,6 +49,7 @@ public class FraudDao {
         result.cardLast24Hour = getIntOrZero(out, "card_24hour");
         result.ipLast1Min = getIntOrZero(out, "ip_1min");
         result.ipLast1Hour = getIntOrZero(out, "ip_1hour");
+        log.debug("[TIMING] checkAllVelocity proc took {}ms", System.currentTimeMillis() - start);
         return result;
     }
 
@@ -80,16 +85,16 @@ public class FraudDao {
         return count != null ? count : 0;
     }
 
-    public String checkAbnormalAmount(String cardNo, BigDecimal amount ) {
+    public String checkAbnormalAmount(String cardNo, BigDecimal amount) {
+        long start = System.currentTimeMillis();
         SqlParameterSource in = new MapSqlParameterSource()
                 .addValue("p_card_no", cardNo)
                 .addValue("p_amount", amount);
 
         Map<String, Object> out = checkAbnormalAmountProc.execute(in);
         Object decision = out.get("p_decision");
-        System.out.println("checkAbnormalAmountProc.execute: " + decision);
+        log.debug("[TIMING] checkAbnormalAmount proc took {}ms, decision={}", System.currentTimeMillis() - start, decision);
         return decision != null ? decision.toString() : "ALLOW";
-
     }
 
     public LastTransactionInfo getLastTransactionWithLocation(String cardNo) {
@@ -141,9 +146,11 @@ public class FraudDao {
     }
 
     public boolean isFirstTransaction(String cardNo) {
-        String sql = "SELECT COUNT(*) FROM transactions WHERE card_no = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, cardNo);
-        return count == null || count == 0;
+        long start = System.currentTimeMillis();
+        String sql = "SELECT CASE WHEN EXISTS (SELECT 1 FROM transactions WHERE card_no = ?) THEN 0 ELSE 1 END";
+        Integer result = jdbcTemplate.queryForObject(sql, Integer.class, cardNo);
+        log.debug("[TIMING] isFirstTransaction took {}ms", System.currentTimeMillis() - start);
+        return result != null && result == 1;
     }
 
 
