@@ -3,11 +3,13 @@ package com.interswitch.fraudtransactionapp.dto.request;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 @Getter
+@NoArgsConstructor
 @AllArgsConstructor
 public class TransactionRequest {
 
@@ -36,7 +38,6 @@ public class TransactionRequest {
     @NotBlank(message = "User agent is required for risk analysis")
     private String userAgent;
 
-
     private String sessionId;
 
     private Double latitude;
@@ -52,4 +53,16 @@ public class TransactionRequest {
     private String merchantCategory;
 
     private String type;
+
+    public TransactionRequest(String cardNo, BigDecimal amount, String merchantId, Instant transactionTime,
+                              String channelType, String ipAddress, String deviceFingerprint, String userAgent) {
+        this.cardNo = cardNo;
+        this.amount = amount;
+        this.merchantId = merchantId;
+        this.transactionTime = transactionTime;
+        this.channelType = channelType;
+        this.ipAddress = ipAddress;
+        this.deviceFingerprint = deviceFingerprint;
+        this.userAgent = userAgent;
+    }
 }

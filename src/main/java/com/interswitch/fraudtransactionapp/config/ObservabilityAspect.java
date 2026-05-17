@@ -14,6 +14,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Aspect
 @Component
@@ -23,6 +24,7 @@ public class ObservabilityAspect {
     private static final Logger logger = LoggerFactory.getLogger(ObservabilityAspect.class);
     private final MeterRegistry meterRegistry;
 
+    private static final Pattern CARD_NO_PATTERN = Pattern.compile("\"cardNo\"\\s*:\\s*\"(\\d{6})(\\d+)(\\d{4})\"");
 
     @Around("execution(* com.interswitch.fraudtransactionapp.service..*(..)) || " +
             "@within(com.interswitch.fraudtransactionapp.config.TrackExecution) || " +
@@ -40,6 +42,7 @@ public class ObservabilityAspect {
 
         try {
             argsJson = objectMapper.writeValueAsString(args);
+            argsJson = maskSensitiveData(argsJson);
             logger.info("[INPUT] {} called with args: {}", methodName, argsJson);
         } catch (Exception e) {
             logger.warn("[INPUT] {} called with args (could not serialize): {}", methodName, argsJson, e);
@@ -51,6 +54,7 @@ public class ObservabilityAspect {
 
             try {
                 resultJson = objectMapper.writeValueAsString(result);
+                resultJson = maskSensitiveData(resultJson);
                 logger.info("[OUTPUT] {} returned: {}", methodName, resultJson);
             } catch (Exception e) {
                 logger.warn("[OUTPUT] {} returned (could not serialize): {}", methodName, resultJson, e);
@@ -72,5 +76,12 @@ public class ObservabilityAspect {
                         .record(duration, TimeUnit.MILLISECONDS);
             }
         }
+    }
+
+    private String maskSensitiveData(String json) {
+        if (json == null || json.isEmpty()) {
+            return json;
+        }
+        return CARD_NO_PATTERN.matcher(json).replaceAll("\"cardNo\":\"$1****$3\"");
     }
 }
