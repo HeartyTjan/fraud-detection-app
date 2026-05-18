@@ -2,7 +2,7 @@ package com.interswitch.fraudtransactionapp.util.mapper;
 
 
 
-import com.interswitch.fraudtransactionapp.model.Decision;
+import com.interswitch.fraudtransactionapp.model.FraudDecisionType;
 import com.interswitch.fraudtransactionapp.model.FraudDecision;
 
 import java.util.Map;
@@ -11,7 +11,7 @@ public final class  FraudDecisionMapper {
 
     public static FraudDecision mapToDecision(String decision, int score, Map<String, String> triggeredRules) {
         FraudDecision fraudDecision = new FraudDecision();
-        fraudDecision.setDecision(Decision.valueOf(decision));
+        fraudDecision.setDecision(FraudDecisionType.valueOf(decision));
         fraudDecision.setRiskScore(score);
         fraudDecision.setTriggeredRules(triggeredRules);
         return fraudDecision;

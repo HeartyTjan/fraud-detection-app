@@ -6,9 +6,9 @@ import lombok.Setter;
 @Getter
 @Setter
 public class VelocityResult {
-    public int cardLast1Min;
-    public int cardLast1Hour;
-    public int cardLast24Hour;
-    public int ipLast1Min;
-    public int ipLast1Hour;
+    private int cardLast1Min;
+    private int cardLast1Hour;
+    private int cardLast24Hour;
+    private int ipLast1Min;
+    private int ipLast1Hour;
 }

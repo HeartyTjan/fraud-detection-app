@@ -1,9 +1,8 @@
 package com.interswitch.fraudtransactionapp.fraudEngine.rule;
 
-import com.interswitch.fraudtransactionapp.fraudEngine.model.RuleContext;
 import com.interswitch.fraudtransactionapp.fraudEngine.model.FraudRuleResult;
+import com.interswitch.fraudtransactionapp.fraudEngine.model.RuleContext;
 import com.interswitch.fraudtransactionapp.repository.BlacklistCache;
-import com.interswitch.fraudtransactionapp.repository.ProviderBlacklistedIPRepository;
 import com.interswitch.fraudtransactionapp.util.mapper.FraudRuleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
@@ -21,26 +20,34 @@ public class BlacklistRule implements BlockingRule {
     @Override
     public FraudRuleResult evaluate(RuleContext context) {
 
-        String cardNo = context.getRequest().getCardNo();
-        String ip = context.getRequest().getIpAddress();
-        String merchantId = context.getRequest().getMerchantId();
+        String cardNo = context.request().getCardNo();
+        String ip = context.request().getIpAddress();
+        String merchantId = context.request().getMerchantId();
 
-        if (cardNo != null && !cardNo.isEmpty() && blacklistCache.isCardBlacklisted(cardNo)) {
-            return FraudRuleMapper.mapToResult(BLACKLIST_SCORE, "CARD_BLACKLISTED", true);
+        if (blacklistCache.isCardBlacklisted(cardNo)) {
+            return blocked("CARD_BLACKLISTED");
         }
 
-        if (ip != null && !ip.isEmpty() && blacklistCache.isIpBlacklisted(ip)) {
-            return FraudRuleMapper.mapToResult(BLACKLIST_SCORE, "IP_BLACKLISTED", true);
+        if (blacklistCache.isIpBlacklisted(ip)) {
+            return blocked("IP_BLACKLISTED");
         }
 
-        if (ip != null && !ip.isEmpty() && blacklistCache.isProviderIpBlacklisted(ip)) {
-            return FraudRuleMapper.mapToResult(BLACKLIST_SCORE, "PROVIDER_IP_BLACKLISTED", true);
+        if (blacklistCache.isProviderIpBlacklisted(ip)) {
+            return blocked("IP_BLACKLISTED");
         }
 
-        if (merchantId != null && !merchantId.isEmpty() && blacklistCache.isMerchantBlacklisted(merchantId)) {
-            return FraudRuleMapper.mapToResult(BLACKLIST_SCORE, "MERCHANT_BLACKLISTED", true);
+        if (blacklistCache.isMerchantBlacklisted(merchantId)) {
+            return blocked("MERCHANT_BLACKLISTED");
         }
 
         return FraudRuleMapper.mapToResult(0, null, false);
+    }
+
+    private FraudRuleResult blocked(String reason) {
+        return FraudRuleMapper.mapToResult(
+                BLACKLIST_SCORE,
+                reason,
+                true
+        );
     }
 }

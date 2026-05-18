@@ -7,10 +7,15 @@ import org.springframework.cache.concurrent.ConcurrentMapCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
+import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @EnableCaching
@@ -23,7 +28,19 @@ public class RedisConfig {
         try {
             factory.getConnection().ping();
 
-            return RedisCacheManager.builder(factory).build();
+            Map<String, RedisCacheConfiguration> configs = new HashMap<>();
+
+            RedisCacheConfiguration baseConfig = RedisCacheConfiguration
+                    .defaultCacheConfig()
+                    .disableCachingNullValues();
+
+            configs.put("blacklist", baseConfig.entryTtl(Duration.ofDays(3)));
+            configs.put("risk", baseConfig.entryTtl(Duration.ofMinutes(30)));
+            configs.put("velocity", baseConfig.entryTtl(Duration.ofMinutes(5)));
+            configs.put("profile", baseConfig.entryTtl(Duration.ofHours(6)));
+            return RedisCacheManager.builder(factory)
+                    .cacheDefaults(baseConfig)
+                    .build();
 
         } catch (Exception ex) {
             // Auto-create caches on demand

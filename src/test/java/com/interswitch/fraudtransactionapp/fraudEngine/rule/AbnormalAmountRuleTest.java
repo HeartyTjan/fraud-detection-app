@@ -1,39 +1,27 @@
 package com.interswitch.fraudtransactionapp.fraudEngine.rule;
 
-import com.interswitch.fraudtransactionapp.dao.FraudDao;
+import com.interswitch.fraudtransactionapp.fraudEngine.model.*;
 import com.interswitch.fraudtransactionapp.dto.request.TransactionRequest;
-import com.interswitch.fraudtransactionapp.fraudEngine.model.FraudRuleResult;
-import com.interswitch.fraudtransactionapp.fraudEngine.model.RuleContext;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
 
 class AbnormalAmountRuleTest {
 
-    private FraudDao fraudDao;
-
-    private AbnormalAmountRule abnormalAmountRule;
+    private AbnormalAmountRule rule;
 
     @BeforeEach
     void setUp() {
-        fraudDao = Mockito.mock(FraudDao.class);
-        abnormalAmountRule = new AbnormalAmountRule(fraudDao);
+        rule = new AbnormalAmountRule();
     }
 
-    private RuleContext buildContext(String cardNo, BigDecimal amount) {
-
-        TransactionRequest request = new TransactionRequest(
-                cardNo,
+    private TransactionRequest buildRequest(BigDecimal amount) {
+        return new TransactionRequest(
+                "4111111111111111",
                 amount,
                 "M123",
                 Instant.now(),
@@ -42,55 +30,101 @@ class AbnormalAmountRuleTest {
                 "device-xyz",
                 "Mozilla/5.0"
         );
+    }
 
+    private RuleContext buildContext(BigDecimal amount, BigDecimal avg) {
 
-        return new RuleContext(request);
+        TransactionRequest request = buildRequest(amount);
+
+        FraudProfile profile = new FraudProfile(
+                null,
+                null,
+                false,
+                avg,
+                0,
+                0,
+                0
+        );
+
+        return new RuleContext(request, profile);
     }
 
     @Test
-    void evaluate_shouldReturnBlockResult_whenDaoReturnsBlock() {
-        String cardNo = "4111111111111111";
-        BigDecimal amount = new BigDecimal("5000.00");
+    void shouldReturnHighScore_whenAmountVeryHigh() {
 
-        when(fraudDao.checkAbnormalAmount(eq(cardNo), eq(amount))).thenReturn("BLOCK");
+        FraudRuleResult result = rule.evaluate(
+                buildContext(
+                        new BigDecimal("200000"),
+                        new BigDecimal("10000")
+                )
+        );
 
-        RuleContext context = buildContext(cardNo, amount);
-
-        FraudRuleResult result = abnormalAmountRule.evaluate(context);
-
-        assertNotNull(result);
+        System.out.println("result: " + result.getScore());
         assertEquals(60, result.getScore());
-        assertEquals("ABNORMAL_AMOUNT_BLOCK", result.getReason());
+        assertEquals("ABNORMAL_AMOUNT_HIGH", result.getReason());
     }
 
     @Test
-    void evaluate_shouldReturnReviewResult_whenDaoReturnsReview() {
-        String cardNo = "4111111111111111";
-        BigDecimal amount = new BigDecimal("1000.00");
+    void shouldReturnHighScore_whenRatioAboveFive() {
 
-        when(fraudDao.checkAbnormalAmount(eq(cardNo), eq(amount))).thenReturn("REVIEW");
+        FraudRuleResult result = rule.evaluate(
+                buildContext(
+                        new BigDecimal("30000"),
+                        new BigDecimal("5000")
+                )
+        );
 
-        RuleContext context = buildContext(cardNo, amount);
+        assertEquals(60, result.getScore());
+        assertEquals("ABNORMAL_AMOUNT_HIGH", result.getReason());
+    }
 
-        FraudRuleResult result = abnormalAmountRule.evaluate(context);
+    @Test
+    void shouldReturnReviewScore_whenMediumCase() {
 
-        assertNotNull(result);
+        FraudRuleResult result = rule.evaluate(
+                buildContext(
+                        new BigDecimal("60000"),
+                        new BigDecimal("20000")
+                )
+        );
+
         assertEquals(40, result.getScore());
         assertEquals("ABNORMAL_AMOUNT_REVIEW", result.getReason());
     }
 
     @Test
-    void evaluate_shouldReturnZeroScore_whenDaoReturnsOtherOrNull() {
-        String cardNo = "4111111111111111";
-        BigDecimal amount = new BigDecimal("100.00");
+    void shouldReturnZeroScore_whenNormalTransaction() {
 
-        when(fraudDao.checkAbnormalAmount(eq(cardNo), eq(amount))).thenReturn(String.valueOf(0));
+        FraudRuleResult result = rule.evaluate(
+                buildContext(
+                        new BigDecimal("1000"),
+                        new BigDecimal("500")
+                )
+        );
 
-        RuleContext context = buildContext(cardNo, amount);
+        assertEquals(0, result.getScore());
+        assertNull(result.getReason());
+    }
 
-        FraudRuleResult result = abnormalAmountRule.evaluate(context);
+    @Test
+    void shouldReturnZeroScore_whenAvgIsNull() {
 
-        assertNotNull(result);
+        TransactionRequest request = buildRequest(new BigDecimal("100000"));
+
+        FraudProfile profile = new FraudProfile(
+                null,
+                null,
+                false,
+                null,
+                0,
+                0,
+                0
+        );
+
+        FraudRuleResult result = rule.evaluate(
+                new RuleContext(request, profile)
+        );
+
         assertEquals(0, result.getScore());
         assertNull(result.getReason());
     }

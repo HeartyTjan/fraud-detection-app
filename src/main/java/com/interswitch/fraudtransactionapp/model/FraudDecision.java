@@ -9,7 +9,7 @@ import java.util.Map;
 @Setter
 public class FraudDecision {
     private int riskScore;
-    private Decision decision;
+    private FraudDecisionType decision;
     private Map<String, String> triggeredRules;
 
 

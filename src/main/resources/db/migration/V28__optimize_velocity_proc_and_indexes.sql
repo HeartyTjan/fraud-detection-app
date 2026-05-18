@@ -1,8 +1,3 @@
--- Add composite index for card velocity (covers both created_at and transaction_time)
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_card_txtime')
-CREATE INDEX idx_card_txtime ON transactions(card_no, transaction_time);
-GO
-
 -- Optimized procedure: single query with conditional aggregation instead of 5 separate queries
 CREATE OR ALTER PROCEDURE check_all_velocity
     @p_card_no      VARCHAR(255),
@@ -45,7 +40,3 @@ BEGIN
 END;
 GO
 
--- Optimize abnormal amount check with index
-IF NOT EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'idx_card_amount')
-CREATE INDEX idx_card_amount ON transactions(card_no, amount);
-GO

@@ -1,7 +1,9 @@
 package com.interswitch.fraudtransactionapp.service.impl;
 
+import com.interswitch.fraudtransactionapp.config.FraudKeyBuilder;
 import com.interswitch.fraudtransactionapp.dao.BlackListedIpDao;
 import com.interswitch.fraudtransactionapp.dao.BlackListedMerchantDao;
+import com.interswitch.fraudtransactionapp.dao.FraudDao;
 import com.interswitch.fraudtransactionapp.dao.TransactionJdbcDao;
 import com.interswitch.fraudtransactionapp.dto.request.TransactionRequest;
 import com.interswitch.fraudtransactionapp.fraudEngine.FraudEngine;
@@ -33,27 +35,22 @@ class FraudServiceImplTest {
     private FraudEngine fraudEngine;
 
     @Mock
-    private IpRiskRepository ipRiskRepository;
-
-    @Mock
-    private MerchantRiskRepository merchantRiskRepository;
-
-    @Mock
-    private BlacklistedCardRepository blacklistedCardRepository;
-
-    @Mock
-    private BlackListedMerchantDao blacklistedMerchantDao;
-
-    @Mock
-    private BlackListedIpDao blacklistedIpDao;
-
-    @Mock
     private RiskService riskService;
 
-//    @Mock
-//   private TransactionRepository transactionRepository;
     @Mock
     private TransactionJdbcDao transactionJdbcDao;
+
+    @Mock
+    private FraudDao fraudDao;
+
+    @Mock
+    private FraudProfileCacheService fraudProfileCacheService;
+
+    @Mock
+    private FraudKeyBuilder keyBuilder;
+
+    @Mock
+    private BlacklistCache blacklistCache;
 
     private TransactionRequest request;
 
@@ -65,67 +62,69 @@ class FraudServiceImplTest {
                 "M123",
                 Instant.now(),
                 "PURCHASE",
-               "192.168.1.1",
+                "192.168.1.1",
                 null, null, null, null, null, null, null, null, null, null
         );
     }
 
     @Test
     void shouldBlockTransactionAndBlacklistEntities() {
+
         FraudDecision decision = new FraudDecision();
-        decision.setDecision(Decision.BLOCK);
+        decision.setDecision(FraudDecisionType.BLOCK);
         decision.setRiskScore(95);
 
         when(fraudEngine.evaluate(any(TransactionRequest.class))).thenReturn(decision);
-        when(ipRiskRepository.findById("192.168.1.1")).thenReturn(Optional.empty());
-        when(merchantRiskRepository.findById("M123")).thenReturn(Optional.empty());
-        when(blacklistedCardRepository.findByCardNo("1234567890123456")).thenReturn(Optional.empty());
-        when(blacklistedIpDao.findById("192.168.1.1")).thenReturn(Optional.empty());
-        when(blacklistedMerchantDao.findById("M123")).thenReturn(Optional.empty());
+        when(keyBuilder.build(any())).thenReturn("cache-key");
 
         FraudDecision result = fraudService.process(request);
 
-        assertThat(result.getDecision()).isEqualTo(Decision.BLOCK);
+        assertThat(result.getDecision()).isEqualTo(FraudDecisionType.BLOCK);
 
-        verify(ipRiskRepository).save(any(IpRisk.class));
-        verify(merchantRiskRepository).save(any(MerchantRisk.class));
-        verify(blacklistedCardRepository).save(any(BlacklistedCard.class));
-        verify(blacklistedIpDao).save(any(BlacklistedIp.class));
-        verify(blacklistedMerchantDao).save(any(BlacklistedMerchant.class));
+        verify(fraudDao).applyBlockActions(
+                eq("1234567890123456"),
+                eq("192.168.1.1"),
+                eq("M123")
+        );
+
         verify(transactionJdbcDao).save(any(Transactions.class));
+
+        verify(fraudProfileCacheService).invalidate("cache-key");
+
+        verify(blacklistCache).addCard("1234567890123456");
+        verify(blacklistCache).addIp("192.168.1.1");
+        verify(blacklistCache).addMerchant("M123");
     }
 
     @Test
     void shouldReviewTransactionAndIncreaseRisk() {
+
         FraudDecision decision = new FraudDecision();
-        decision.setDecision(Decision.REVIEW);
-        decision.setRiskScore(50);
+        decision.setDecision(FraudDecisionType.REVIEW);
 
         when(fraudEngine.evaluate(any(TransactionRequest.class))).thenReturn(decision);
-        when(ipRiskRepository.findById("192.168.1.1")).thenReturn(Optional.empty());
-        when(merchantRiskRepository.findById("M123")).thenReturn(Optional.empty());
 
         FraudDecision result = fraudService.process(request);
 
-        assertThat(result.getDecision()).isEqualTo(Decision.REVIEW);
-        verify(ipRiskRepository).save(argThat(ip -> ip.getRiskScore() == 20));
-        verify(merchantRiskRepository).save(argThat(m -> m.getRiskScore() == 20));
+        assertThat(result.getDecision()).isEqualTo(FraudDecisionType.REVIEW);
+
+        verify(fraudDao).updateRiskScores("192.168.1.1", "M123", 20);
+        verify(transactionJdbcDao).save(any(Transactions.class));
     }
 
     @Test
     void shouldApproveTransactionAndReduceRisk() {
+
         FraudDecision decision = new FraudDecision();
-        decision.setDecision(Decision.ALLOW);
-        decision.setRiskScore(10);
+        decision.setDecision(FraudDecisionType.ALLOW);
 
         when(fraudEngine.evaluate(any(TransactionRequest.class))).thenReturn(decision);
-        when(ipRiskRepository.findById("192.168.1.1")).thenReturn(Optional.empty());
-        when(merchantRiskRepository.findById("M123")).thenReturn(Optional.empty());
 
         FraudDecision result = fraudService.process(request);
 
-        assertThat(result.getDecision()).isEqualTo(Decision.ALLOW);
-        verify(ipRiskRepository).save(argThat(ip -> ip.getRiskScore() == 0));
-        verify(merchantRiskRepository).save(argThat(m -> m.getRiskScore() == 0));
+        assertThat(result.getDecision()).isEqualTo(FraudDecisionType.ALLOW);
+
+        verify(fraudDao).updateRiskScores("192.168.1.1", "M123", -5);
+        verify(transactionJdbcDao).save(any(Transactions.class));
     }
 }

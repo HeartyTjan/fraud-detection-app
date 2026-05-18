@@ -1,45 +1,47 @@
 package com.interswitch.fraudtransactionapp.fraudEngine.rule;
 
-import com.interswitch.fraudtransactionapp.dao.FraudDao;
 import com.interswitch.fraudtransactionapp.fraudEngine.model.FraudRuleResult;
 import com.interswitch.fraudtransactionapp.fraudEngine.model.RuleContext;
-import com.interswitch.fraudtransactionapp.repository.FraudJdbcRepository;
 import com.interswitch.fraudtransactionapp.util.mapper.FraudRuleMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Component
 @RequiredArgsConstructor
-@Order(3)
+@Order(7)
 public class AbnormalAmountRule implements FraudRule {
 
-    private final FraudDao fraudDao;
-//    private final FraudJdbcRepository fraudDao;
+    private static final BigDecimal HIGH_THRESHOLD = new BigDecimal("100000");
+    private static final BigDecimal MEDIUM_THRESHOLD = new BigDecimal("50000");
 
     @Override
     public FraudRuleResult evaluate(RuleContext context) {
-        String cardNo = context.getRequest().getCardNo();
-        BigDecimal amount = context.getRequest().getAmount();
 
-        String decision = fraudDao.checkAbnormalAmount(cardNo, amount);
+        if (context.fraudProfile().isFirstTransaction()) {
+            return FraudRuleMapper.mapToResult(0, null, false);
+        }
+        BigDecimal amount = context.request().getAmount();
 
-        int score = 0;
-        String reason = null;
+        BigDecimal avg = context.fraudProfile().getAverageTransactionAmount();
 
-        switch (decision) {
-            case "BLOCK" -> {
-                score = 60;
-                reason = "ABNORMAL_AMOUNT_BLOCK";
-            }
-            case "REVIEW" -> {
-                score = 40;
-                reason = "ABNORMAL_AMOUNT_REVIEW";
-            }
+        if (avg == null || avg.compareTo(BigDecimal.ZERO) <= 0) {
+            return FraudRuleMapper.mapToResult(0, null, false);
         }
 
-        return FraudRuleMapper.mapToResult(score, reason, false);
+        BigDecimal ratio = amount.divide(avg, 2, RoundingMode.HALF_UP);
+
+        if (amount.compareTo(HIGH_THRESHOLD) > 0 || ratio.compareTo(new BigDecimal("5")) > 0) {
+            return FraudRuleMapper.mapToResult(60, "ABNORMAL_AMOUNT_HIGH", false);
+        }
+
+        if (amount.compareTo(MEDIUM_THRESHOLD) > 0 || ratio.compareTo(new BigDecimal("3")) > 0) {
+            return FraudRuleMapper.mapToResult(40, "ABNORMAL_AMOUNT_REVIEW", false);
+        }
+
+        return FraudRuleMapper.mapToResult(0, null, false);
     }
 }

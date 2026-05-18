@@ -1,6 +1,6 @@
 package com.interswitch.fraudtransactionapp.model;
 
-public enum Decision {
+public enum FraudDecisionType {
     ALLOW,
     REVIEW,
     BLOCK

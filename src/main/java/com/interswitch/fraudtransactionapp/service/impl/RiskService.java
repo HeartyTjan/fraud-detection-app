@@ -1,52 +1,65 @@
 package com.interswitch.fraudtransactionapp.service.impl;
 
-
+import com.interswitch.fraudtransactionapp.dao.FraudDao;
 import com.interswitch.fraudtransactionapp.model.IpRisk;
 import com.interswitch.fraudtransactionapp.model.MerchantRisk;
+import com.interswitch.fraudtransactionapp.model.RiskUpdateResult;
 import com.interswitch.fraudtransactionapp.repository.IpRiskRepository;
 import com.interswitch.fraudtransactionapp.repository.MerchantRiskRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
+
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
 public class RiskService {
 
+    private final FraudDao fraudDao;
+    private final CacheManager cacheManager;
     private final IpRiskRepository ipRiskRepository;
     private final MerchantRiskRepository merchantRiskRepository;
+    public RiskUpdateResult updateRisk(String ip, String merchantId, int delta) {
 
-    @Cacheable(value = "ipRisks", key = "#ip")
-    public Integer getIpRisk(String ip) {
-        return ipRiskRepository.findById(ip)
-                .map(IpRisk::getRiskScore)
-                .orElse(0);
+        RiskUpdateResult result = fraudDao.updateRiskScores(ip, merchantId, delta);
+
+        Objects.requireNonNull(cacheManager.getCache("ipRisks")).put(ip, result.ipScore());
+        Objects.requireNonNull(cacheManager.getCache("merchantRisks")).put(merchantId, result.merchantScore());
+
+        return result;
     }
 
-    @Cacheable(value = "merchantRisks", key = "#merchantId")
-    public Integer getMerchantRisk(String merchantId) {
-        return merchantRiskRepository.findById(merchantId)
-                .map(MerchantRisk::getRiskScore)
-                .orElse(0);
-    }
-
-    @CachePut(value = "ipRisks", key = "#ip")
-    public Integer updateIpRisk(String ip, int newScore) {
-        IpRisk ipRisk = ipRiskRepository.findById(ip).orElse(new IpRisk());
-        ipRisk.setIpAddress(ip);
-        ipRisk.setRiskScore(newScore);
-        ipRiskRepository.save(ipRisk);
-        return newScore;
-    }
-
-    @CachePut(value = "merchantRisks", key = "#merchantId")
-    public Integer updateMerchantRisk(String merchantId, int newScore) {
-        MerchantRisk merchantRisk = merchantRiskRepository.findById(merchantId)
-                .orElse(new MerchantRisk());
-        merchantRisk.setMerchantId(merchantId);
-        merchantRisk.setRiskScore(newScore);
-        merchantRiskRepository.save(merchantRisk);
-        return newScore;
-    }
+//    public int resolveIpRisk(String ip) {
+//
+//        Integer cached = getIpRisk(ip);
+//        if (cached != null) return cached;
+//
+//        int dbValue = ipRiskRepository.findById(ip)
+//                .map(IpRisk::getRiskScore)
+//                .orElse(0);
+//
+//        updateIpCache(ip, dbValue);
+//        return dbValue;
+//    }
+//
+//    public int resolveMerchantRisk(String merchantId) {
+//
+//        Integer cached = getMerchantRisk(merchantId);
+//        if (cached != null) return cached;
+//
+//        int dbValue = merchantRiskRepository.findById(merchantId)
+//                .map(MerchantRisk::getRiskScore)
+//                .orElse(0);
+//
+//        updateMerchantCache(merchantId, dbValue);
+//        return dbValue;
+//    }
+//
+//    private void updateIpCache(String ip, int score) {
+//        Cache cache = cacheManager.getCache("ipRisks");
+//        if (cache != null) {
+//            cache.put(ip, score);
+//        }
+//    }
 }
