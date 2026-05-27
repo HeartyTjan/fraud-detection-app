@@ -13,7 +13,7 @@ import java.math.BigDecimal;
 
 @Component
 @RequiredArgsConstructor
-@Order(3)
+@Order(7)
 public class AbnormalAmountRule implements FraudRule {
 
     private final FraudDao fraudDao;

@@ -36,3 +36,7 @@ build/
 ### Logs ###
 logs/
 *.log
+
+### Environment / Secrets ###
+.env
+application-dev.properties

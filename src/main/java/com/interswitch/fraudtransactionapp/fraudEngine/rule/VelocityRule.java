@@ -14,7 +14,7 @@ import java.time.Instant;
 
 @Component
 @RequiredArgsConstructor
-@Order(2)
+@Order(3)
 public class VelocityRule implements FraudRule {
 
     private final FraudDao fraudDao;
