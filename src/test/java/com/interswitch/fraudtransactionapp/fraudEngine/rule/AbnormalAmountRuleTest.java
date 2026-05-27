@@ -52,6 +52,7 @@ class AbnormalAmountRuleTest {
         String cardNo = "4111111111111111";
         BigDecimal amount = new BigDecimal("5000000.00");
 
+
         when(fraudDao.checkAbnormalAmount(eq(cardNo), eq(amount))).thenReturn("BLOCK");
 
         RuleContext context = buildContext(cardNo, amount);

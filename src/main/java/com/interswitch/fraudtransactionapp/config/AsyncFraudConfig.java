@@ -7,6 +7,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
+
 @Configuration
 public class AsyncFraudConfig {
 
@@ -18,6 +19,7 @@ public class AsyncFraudConfig {
                 60L,
                 java.util.concurrent.TimeUnit.SECONDS,
                 new java.util.concurrent.LinkedBlockingQueue<>(500),
+
                 r -> {
                     Thread t = new Thread(r, "fraud-rule-worker");
                     t.setDaemon(true);

@@ -19,6 +19,7 @@ import com.interswitch.fraudtransactionapp.util.mapper.FraudDecisionMapper;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
+
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +47,44 @@ public class FraudEngine {
     private final ExecutorService fraudRuleExecutor;
     private final MeterRegistry meterRegistry;
 
+
+    private List<BlockingRule> blockingRules;
+    private List<FraudRule> scoringRules;
+
+    public FraudEngine(
+            IpRiskRepository ipRiskRepository,
+            MerchantRiskRepository merchantRiskRepository,
+            BlacklistedCardRepository blacklistedCardRepository,
+            List<FraudRule> rules,
+            RiskService riskService,
+            FraudConfig fraudConfig,
+            @Qualifier("fraudRuleExecutor") ExecutorService fraudRuleExecutor
+    ) {
+        this.ipRiskRepository = ipRiskRepository;
+        this.merchantRiskRepository = merchantRiskRepository;
+        this.blacklistedCardRepository = blacklistedCardRepository;
+        this.rules = rules;
+        this.riskService = riskService;
+        this.fraudConfig = fraudConfig;
+        this.fraudRuleExecutor = fraudRuleExecutor;
+    }
+
+    @PostConstruct
+    public void init() {
+        blockingRules = new ArrayList<>();
+        scoringRules = new ArrayList<>();
+
+        for (FraudRule rule : rules) {
+            if (rule instanceof BlockingRule) {
+                blockingRules.add((BlockingRule) rule);
+            } else {
+                scoringRules.add(rule);
+            }
+        }
+
+        log.info("FraudEngine initialized: {} blocking rules, {} scoring rules (parallel)",
+                blockingRules.size(), scoringRules.size());
+    }
 
     private List<BlockingRule> blockingRules;
     private List<FraudRule> scoringRules;
@@ -90,6 +129,7 @@ public class FraudEngine {
     public FraudDecision evaluate(TransactionRequest request) {
         Timer.Sample sample = Timer.start(meterRegistry);
 
+
         long totalStart = System.currentTimeMillis();
         log.info("=== FRAUD EVALUATION START === card={}, merchant={}, ip={}, amount={}",
                 maskCard(request.getCardNo()), request.getMerchantId(), request.getIpAddress(), request.getAmount());
@@ -133,6 +173,7 @@ public class FraudEngine {
                 sample.stop(Timer.builder("fraud.engine.latency")
                         .tag("stage", "evaluate")
                         .register(meterRegistry));
+
 
                 return decision;
             }
@@ -191,6 +232,7 @@ public class FraudEngine {
         sample.stop(Timer.builder("fraud.engine.latency")
                 .tag("stage", "evaluate")
                 .register(meterRegistry));
+
 
         return decision;
     }

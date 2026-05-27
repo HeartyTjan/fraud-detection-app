@@ -133,6 +133,7 @@ Key capabilities include blacklist verification, velocity checks, geo-velocity a
 
 #### 1. Clone the Repository
 
+
 ```bash
 git clone <repository-url>
 cd FraudTransactionApp
@@ -338,6 +339,7 @@ LOG_PATTERN_FILE=%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %m
 
 ## Usage Examples
 
+
 ### 1. Create an API Key
 
 ```bash
@@ -357,6 +359,7 @@ curl -X POST "http://localhost:8088/api/v1/auth/create-key?ownerName=MyApp"
 
 ```bash
 curl -X POST "http://localhost:8088/api/v1/auth/login" \
+
   -H "X-API-KEY: fraud-api-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 ```
 
@@ -367,6 +370,7 @@ curl -X POST "http://localhost:8088/api/v1/auth/login" \
   "message": "Login successful!",
   "data": "eyJhbGciOiJIUzI1NiIs..."
 }
+
 ```
 
 ### 3. Process a Transaction
@@ -374,7 +378,7 @@ curl -X POST "http://localhost:8088/api/v1/auth/login" \
 ```bash
 curl -X POST "http://localhost:8088/api/v1/fraud/process" \
   -H "Content-Type: application/json" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..." \
+  -H "Authorization: Bearer your_jwt_token" \
   -d '{
     "cardNo": "4111111111111111",
     "amount": 1000.00,
@@ -391,7 +395,8 @@ curl -X POST "http://localhost:8088/api/v1/fraud/process" \
   }'
 ```
 
-**Sample Response:**
+### Sample Response
+>>>>>>> 925e42ed252517df7dd81d6059c0479ca3347347
 
 ```json
 {
@@ -405,6 +410,7 @@ curl -X POST "http://localhost:8088/api/v1/fraud/process" \
       "IpRiskRule": "IP risk score acceptable",
       "MerchantRiskRule": "Merchant risk score acceptable",
       "IsolationForestFraudRule": "Transaction is normal"
+
     }
   }
 }
@@ -549,6 +555,7 @@ FraudTransactionApp/
 
 Flyway manages schema versioning automatically on startup. Migrations are located in:
 
+
 ```
 src/main/resources/db/migration/
 ```
@@ -617,3 +624,4 @@ To trigger a Flyway repair manually, the project includes a `FlywayRepairTool` c
 Proprietary — Tijani_Salami
 
 > Unauthorized copying, distribution, or use of this software is strictly prohibited without prior written consent.
+
