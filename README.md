@@ -396,7 +396,7 @@ curl -X POST "http://localhost:8088/api/v1/fraud/process" \
 ```
 
 ### Sample Response
->>>>>>> 925e42ed252517df7dd81d6059c0479ca3347347
+
 
 ```json
 {
