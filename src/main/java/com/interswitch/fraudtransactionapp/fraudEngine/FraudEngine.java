@@ -21,7 +21,6 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
 
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -46,45 +45,6 @@ public class FraudEngine {
     private final FraudConfig fraudConfig;
     private final ExecutorService fraudRuleExecutor;
     private final MeterRegistry meterRegistry;
-
-
-    private List<BlockingRule> blockingRules;
-    private List<FraudRule> scoringRules;
-
-    public FraudEngine(
-            IpRiskRepository ipRiskRepository,
-            MerchantRiskRepository merchantRiskRepository,
-            BlacklistedCardRepository blacklistedCardRepository,
-            List<FraudRule> rules,
-            RiskService riskService,
-            FraudConfig fraudConfig,
-            @Qualifier("fraudRuleExecutor") ExecutorService fraudRuleExecutor
-    ) {
-        this.ipRiskRepository = ipRiskRepository;
-        this.merchantRiskRepository = merchantRiskRepository;
-        this.blacklistedCardRepository = blacklistedCardRepository;
-        this.rules = rules;
-        this.riskService = riskService;
-        this.fraudConfig = fraudConfig;
-        this.fraudRuleExecutor = fraudRuleExecutor;
-    }
-
-    @PostConstruct
-    public void init() {
-        blockingRules = new ArrayList<>();
-        scoringRules = new ArrayList<>();
-
-        for (FraudRule rule : rules) {
-            if (rule instanceof BlockingRule) {
-                blockingRules.add((BlockingRule) rule);
-            } else {
-                scoringRules.add(rule);
-            }
-        }
-
-        log.info("FraudEngine initialized: {} blocking rules, {} scoring rules (parallel)",
-                blockingRules.size(), scoringRules.size());
-    }
 
     private List<BlockingRule> blockingRules;
     private List<FraudRule> scoringRules;
@@ -279,5 +239,3 @@ public class FraudEngine {
         return FraudDecisionMapper.allow(totalScore, triggered);
     }
 }
-
-
