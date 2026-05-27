@@ -16,8 +16,11 @@ import com.interswitch.fraudtransactionapp.repository.IpRiskRepository;
 import com.interswitch.fraudtransactionapp.repository.MerchantRiskRepository;
 import com.interswitch.fraudtransactionapp.service.impl.RiskService;
 import com.interswitch.fraudtransactionapp.util.mapper.FraudDecisionMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+
 import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -41,6 +44,7 @@ public class FraudEngine {
     private final RiskService riskService;
     private final FraudConfig fraudConfig;
     private final ExecutorService fraudRuleExecutor;
+    private final MeterRegistry meterRegistry;
 
     private List<BlockingRule> blockingRules;
     private List<FraudRule> scoringRules;
@@ -52,6 +56,7 @@ public class FraudEngine {
             List<FraudRule> rules,
             RiskService riskService,
             FraudConfig fraudConfig,
+            MeterRegistry meterRegistry,
             @Qualifier("fraudRuleExecutor") ExecutorService fraudRuleExecutor
     ) {
         this.ipRiskRepository = ipRiskRepository;
@@ -60,6 +65,7 @@ public class FraudEngine {
         this.rules = rules;
         this.riskService = riskService;
         this.fraudConfig = fraudConfig;
+        this.meterRegistry = meterRegistry;
         this.fraudRuleExecutor = fraudRuleExecutor;
     }
 
@@ -81,6 +87,9 @@ public class FraudEngine {
     }
 
     public FraudDecision evaluate(TransactionRequest request) {
+        Timer.Sample sample = Timer.start(meterRegistry);
+
+
         long totalStart = System.currentTimeMillis();
         log.info("=== FRAUD EVALUATION START === card={}, merchant={}, ip={}, amount={}",
                 maskCard(request.getCardNo()), request.getMerchantId(), request.getIpAddress(), request.getAmount());
@@ -115,6 +124,17 @@ public class FraudEngine {
                 FraudDecision decision = aggregateDecision(context);
                 log.info("=== FRAUD EVALUATION END === decision={}, finalScore={}, totalTime={}ms",
                         decision.getDecision(), decision.getRiskScore(), System.currentTimeMillis() - totalStart);
+
+                Counter.builder("fraud.decisions")
+                        .tag("type", decision.getDecision().name())
+                        .register(meterRegistry)
+                        .increment();
+
+                sample.stop(Timer.builder("fraud.engine.latency")
+                        .tag("stage", "evaluate")
+                        .register(meterRegistry));
+
+
                 return decision;
             }
 
@@ -163,6 +183,17 @@ public class FraudEngine {
         FraudDecision decision = aggregateDecision(context);
         log.info("=== FRAUD EVALUATION END === decision={}, finalScore={}, totalTime={}ms",
                 decision.getDecision(), decision.getRiskScore(), System.currentTimeMillis() - totalStart);
+
+        Counter.builder("fraud.decisions")
+                .tag("type", decision.getDecision().name())
+                .register(meterRegistry)
+                .increment();
+
+        sample.stop(Timer.builder("fraud.engine.latency")
+                .tag("stage", "evaluate")
+                .register(meterRegistry));
+
+
         return decision;
     }
 
@@ -208,5 +239,3 @@ public class FraudEngine {
         return FraudDecisionMapper.allow(totalScore, triggered);
     }
 }
-
-

@@ -14,7 +14,7 @@ import java.math.BigDecimal;
 
 @Component
 @RequiredArgsConstructor
-@Order(8)
+@Order(2)
 public class FirstTransactionRule implements FraudRule {
 
     private final FraudDao fraudDao;

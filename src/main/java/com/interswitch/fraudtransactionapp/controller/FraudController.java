@@ -24,6 +24,12 @@ public class FraudController {
     private final FraudService fraudService;
     private final RateLimiter rateLimiter;
 
+        @GetMapping("/trace-check")
+        public String trace() {
+            return "trace test";
+        }
+
+
     @PostMapping("/process")
     @Operation(
             summary = "Process transaction for fraud",
