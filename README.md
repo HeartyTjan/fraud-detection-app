@@ -68,7 +68,7 @@ Key capabilities include blacklist verification, velocity checks, geo-velocity a
 
 | Category | Technology |
 |----------|------------|
-| Language | Java 17 |
+| Language | Java 25 |
 | Framework | Spring Boot 4.0.3 |
 | Web | Spring MVC + Spring WebFlux (reactive client) |
 | Security | Spring Security + JWT (JJWT 0.12.6) |
